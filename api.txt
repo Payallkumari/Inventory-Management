@@ -1,3 +1,5 @@
+// Testing Routes for stage 1
+
 1️⃣ Create a New Item
 Method: POST
 URL: http://localhost:3000/item
@@ -47,3 +49,5 @@ URL: http://localhost:3000/item/{id}/remove
     "quantity": 2
 }
 
+
+// Improved and meaningfull REQUEST API ENDPOINTS 
