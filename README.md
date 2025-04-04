@@ -18,7 +18,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 - Built-in **JWT Authentication** and **Rate Limiting**.
 - Modular **RESTful API**, separated controllers/middleware/services.
 
----
 
 ##  Design Decisions
 
@@ -40,7 +39,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 - Each request must include a valid token for all endpoints (except `/login`).
 - PostgreSQL is used for relational queries and scalability.
 
----
 
 ##  API Design
 
@@ -79,7 +77,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 | GET    | `/api/stores/:storeId/low-stock?threshold=n`         | Low stock products                   |
 | GET    | `/api/stores/:storeId/total-sales?date_from&date_to` | Revenue generated in date range      |
 
----
 
 ##  Evolution Rationale: v1 → v2
 
@@ -93,7 +90,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 | **Reporting**         | Not available                            | Date-filtered inventory, sales, low-stock, revenue              |
 | **Architecture**      | Monolithic                               | Modular (routes, middleware, controller separation)             |
 
----
 
 ##  Testing
 
