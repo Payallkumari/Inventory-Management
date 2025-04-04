@@ -1,53 +1,34 @@
 // Testing Routes for stage 1
 
-1️⃣ Create a New Item
-Method: POST
-URL: http://localhost:3000/item
-{
-    "name": "Laptop",
-    "quantity": 10,
-    "price": 1200.50
-}
+Create a New Item  POST     http://localhost:3000/item                 { "name": "Laptop", "quantity": 10, "price": 1200.50 }
+Get All Items      GET      http://localhost:3000/item                 None
+Update an Item     PUT      http://localhost:3000/item/{id}            { "name": "Gaming Laptop",  "quantity": 15,  "price": 1500.75 }
+Delete an Item     DELETE   http://localhost:3000/item/{id}            None
+Stock In an Item   POST     http://localhost:3000/item/{id}/stock-in   { "quantity": 5}
+Sell an Item       POST     http://localhost:3000/item/{id}/sell       { "quantity": 3}
+Remove Item        POST     http://localhost:3000/item/{id}/remove     { "quantity": 2}
 
-2️⃣ Get All Items
-Method: GET
-URL: http://localhost:3000/item
-
-3️⃣ Update an Item
-Method: PUT
-URL: http://localhost:3000/item/{id}
-(Replace {id} with the actual item ID)
-
-{
-    "name": "Gaming Laptop",
-    "quantity": 15,
-    "price": 1500.75
-}
-
-4️⃣ Delete an Item
-Method: DELETE
-URL: http://localhost:3000/item/{id}
-
-5️⃣ Stock In an Item (Increase Quantity)
-Method: POST
-URL: http://localhost:3000/item/{id}/stock-in
-{
-    "quantity": 5
-}
-
-6️⃣ Sell an Item (Decrease Quantity)
-Method: POST
-URL: http://localhost:3000/item/{id}/sell
-{
-    "quantity": 3
-}
-
-7️⃣ Manually Remove Stock
-Method: POST
-URL: http://localhost:3000/item/{id}/remove
-{
-    "quantity": 2
-}
 
 
 // Improved and meaningfull REQUEST API ENDPOINTS 
+
+PRODUCT ROUTES
+
+Create Product	    POST	http://localhost:3000/api/products	    { "name": "Milk", "price": 2.5 }
+Get All Products	GET	    http://localhost:3000/api/products	    None
+Update Product	    PUT	    http://localhost:3000/api/products/1	{ "name": "Milk 2L", "price": 3.0 }
+
+STORE ROUTES
+
+Get All Stores	            GET	    http://localhost:3000/api/stores	                     None
+Get Stock at Store	        GET	    http://localhost:3000/api/stores/1/stock	             None
+Stock-In Product to Store	POST	http://localhost:3000/api/stores/1/products/1/stock-in	{ "quantity": 50 }
+Sell Product from Store	    POST	http://localhost:3000/api/stores/1/products/1/sell	    { "quantity": 5 }
+Remove Stock from Store	    POST	http://localhost:3000/api/stores/1/products/1/remove	{ "quantity": 2 }
+
+FITERING 
+
+Get Store Inventory by Date	     GET	http://localhost:3000/api/stores/1/inventory?date_from=2024-03-01&date_to=2024-03-31	None
+Get Top Selling Products	     GET	http://localhost:3000/api/stores/1/sales?top=5	                                        None
+Get Low Stock Alerts	         GET	http://localhost:3000/api/stores/1/low-stock?threshold=3	                            None
+Get Total Sales (Date Filtered)	 GET	http://localhost:3000/api/stores/1/total-sales?date_from=2024-03-01&date_to=2024-03-31	None

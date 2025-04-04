@@ -1,3 +1,4 @@
+-- Active: 1743791473942@@127.0.0.1@5432@Inventory Module
 DROP TABLE IF EXISTS stock_movements, store_stock, stores, products CASCADE;
 
 CREATE TABLE products (
@@ -127,6 +128,8 @@ LIMIT 200;
 UPDATE products
 SET created_at = NOW() - INTERVAL '1 day' * FLOOR(RANDOM() * 730);
 
+
+-- Testing Database by running different quries
 SELECT * FROM stores WHERE location LIKE '%Lahore%';
 
 SELECT DISTINCT s.name AS store_name, s.location, p.name AS product_name, ss.quantity
@@ -189,8 +192,7 @@ JOIN products p ON sm.product_id = p.id
 WHERE sm.type = 'sold'  
 GROUP BY p.name
 ORDER BY total_sold DESC
-LIMIT 5
-;
+LIMIT 5;
 
 
 
@@ -200,8 +202,22 @@ JOIN stores s ON sm.store_id = s.id
 WHERE sm.type = 'sold' 
 GROUP BY s.name
 ORDER BY total_sold DESC
-LIMIT 3
-;
+LIMIT 3;
+
+
+
+SELECT 
+    p.id AS product_id,
+    p.name AS product_name,
+    p.price,
+    ss.quantity
+FROM 
+    store_stock ss
+JOIN 
+    products p ON ss.product_id = p.id
+WHERE 
+    ss.store_id = 1;
+
 
 
 

@@ -1,102 +1,235 @@
-// ============== stage 2 ======================
+// // ============== stage 2 ======================
+// // updated crud.js for store-aware inventory
 
 const pool = require("./database.js");
 
-// CREATE a new product
-const createItem = async (name, quantity, price, callback) => {
+// PRODUCT CONTROLLERS 
+
+const createProduct = async (req, res) => {
+    const { name, price } = req.body;
     try {
         const result = await pool.query(
-            `INSERT INTO item (name, current_quantity, price) VALUES ($1, $2, $3) RETURNING id`,
-            [name, quantity, price]
+            `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`,
+            [name, price]
         );
-        callback(null, { id: result.rows[0].id });
+        res.status(201).send({ message: "Product created", id: result.rows[0].id });
     } catch (err) {
-        console.error("Error inserting item:", err.message);
-        callback(err, null);
+        res.status(500).send(err.message);
     }
 };
 
-// READ all products
-const readItems = async (callback) => {
+const getAllProducts = async (req, res) => {
     try {
-        const result = await pool.query(`SELECT * FROM item`);
-        callback(null, result.rows);
+        const result = await pool.query(`SELECT * FROM products ORDER BY id`);
+        res.status(200).json(result.rows);
     } catch (err) {
-        callback(err, null);
+        res.status(500).send(err.message);
     }
 };
 
-// UPDATE product details
-const updateItem = async (id, name, quantity, price, callback) => {
+const updateProduct = async (req, res) => {
+    const { productId } = req.params;
+    const { name, price } = req.body;
     try {
         const result = await pool.query(
-            `UPDATE item SET name = $1, current_quantity = $2, price = $3 WHERE id = $4 RETURNING *`,
-            [name, quantity, price, id]
+            `UPDATE products SET name = $1, price = $2 WHERE id = $3 RETURNING *`,
+            [name, price, productId]
         );
-        if (result.rowCount === 0) return callback(new Error("No item found with the given ID."));
-        callback(null);
+        if (result.rowCount === 0) {
+            return res.status(404).send("Product not found");
+        }
+        res.status(200).send("Product updated");
     } catch (err) {
-        callback(err);
+        res.status(500).send(err.message);
     }
 };
 
-// DELETE a product
-const deleteItem = async (id, callback) => {
+//STORE CONTROLLERS 
+
+const getAllStores = async (req, res) => {
     try {
-        await pool.query(`DELETE FROM item WHERE id = $1`, [id]);
-        callback(null);
+        const result = await pool.query(`SELECT * FROM stores ORDER BY id`);
+        res.status(200).json(result.rows);
     } catch (err) {
-        callback(err);
+        res.status(500).send(err.message);
     }
 };
 
-// STOCK IN a product
-const stockIn = async (id, quantity, callback) => {
-    try {
-        await pool.query(`UPDATE item SET current_quantity = current_quantity + $1 WHERE id = $2`, [quantity, id]);
-        await logStockMovement(id, quantity, "stock-in");
-        callback(null);
-    } catch (err) {
-        callback(err);
-    }
-};
-
-// SELL a product
-const sellItem = async (id, quantity, callback) => {
+const getStoreStock = async (req, res) => {
+    const { storeId } = req.params;
     try {
         const result = await pool.query(
-            `UPDATE item SET current_quantity = current_quantity - $1 WHERE id = $2 AND current_quantity >= $1 RETURNING *`,
-            [quantity, id]
+            `SELECT p.id AS product_id, p.name, p.price, ss.quantity
+             FROM store_stock ss
+             JOIN products p ON ss.product_id = p.id
+             WHERE ss.store_id = $1`,
+            [storeId]
         );
-        if (result.rowCount === 0) return callback(new Error("Not enough stock"));
-        await logStockMovement(id, -quantity, "sell");
-        callback(null);
+        res.status(200).json(result.rows);
     } catch (err) {
-        callback(err);
+        res.status(500).send(err.message);
     }
 };
 
-// MANUALLY REMOVE stock
-const removeStock = async (id, quantity, callback) => {
+const stockIn = async (req, res) => {
+    const { storeId, productId } = req.params;
+    const { quantity } = req.body;
+    try {
+        await pool.query(
+            `INSERT INTO store_stock (store_id, product_id, quantity)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (store_id, product_id)
+             DO UPDATE SET quantity = store_stock.quantity + $3`,
+            [storeId, productId, quantity]
+        );
+        await logStockMovement(storeId, productId, quantity, "stock-in");
+        res.status(200).send("Stocked in successfully.");
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+};
+
+const sellProduct = async (req, res) => {
+    const { storeId, productId } = req.params;
+    const { quantity } = req.body;
     try {
         const result = await pool.query(
-            `UPDATE item SET current_quantity = current_quantity - $1 WHERE id = $2 AND current_quantity >= $1 RETURNING *`,
-            [quantity, id]
+            `UPDATE store_stock SET quantity = quantity - $1
+             WHERE store_id = $2 AND product_id = $3 AND quantity >= $1
+             RETURNING *`,
+            [quantity, storeId, productId]
         );
-        if (result.rowCount === 0) return callback(new Error("Not enough stock"));
-        await logStockMovement(id, -quantity, "remove");
-        callback(null);
+        if (result.rowCount === 0) {
+            return res.status(400).send("Not enough stock");
+        }
+        await logStockMovement(storeId, productId, -quantity, "sold");
+        res.status(200).send("Product sold successfully.");
     } catch (err) {
-        callback(err);
+        res.status(500).send(err.message);
     }
 };
 
-// LOG STOCK MOVEMENT
-const logStockMovement = async (itemId, change, type) => {
-    await pool.query(`INSERT INTO stock_movements (item_id, change, type) VALUES ($1, $2, $3)`, [itemId, change, type]);
+const removeStock = async (req, res) => {
+    const { storeId, productId } = req.params;
+    const { quantity } = req.body;
+    try {
+        const result = await pool.query(
+            `UPDATE store_stock SET quantity = quantity - $1
+             WHERE store_id = $2 AND product_id = $3 AND quantity >= $1
+             RETURNING *`,
+            [quantity, storeId, productId]
+        );
+        if (result.rowCount === 0) {
+            return res.status(400).send("Not enough stock");
+        }
+        await logStockMovement(storeId, productId, -quantity, "remove");
+        res.status(200).send("Stock removed successfully.");
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
 };
 
-module.exports = { createItem, readItems, updateItem, deleteItem, stockIn, sellItem, removeStock };
+
+const logStockMovement = async (storeId, productId, change, type) => {
+    await pool.query(
+        `INSERT INTO stock_movements (store_id, product_id, change, type, timestamp)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [storeId, productId, change, type]
+    );
+};
+
+//REPORTS 
+
+const getInventoryByDate = async (req, res) => {
+    const { storeId } = req.params;
+    const { date_from, date_to } = req.query;
+    try {
+        const result = await pool.query(
+            `SELECT * FROM stock_movements
+             WHERE store_id = $1 AND timestamp BETWEEN $2 AND $3
+             ORDER BY timestamp DESC`,
+            [storeId, date_from, date_to]
+        );
+        res.status(200).json(result.rows);
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+};
+
+const getTopSellingProducts = async (req, res) => {
+    const { storeId } = req.params;
+    const top = parseInt(req.query.top) || 5;
+    try {
+        const result = await pool.query(
+            `SELECT p.id, p.name, SUM(ABS(sm.change)) AS sold_quantity
+             FROM stock_movements sm
+             JOIN products p ON sm.product_id = p.id
+             WHERE sm.store_id = $1 AND sm.type = 'sold'
+             GROUP BY p.id, p.name
+             ORDER BY sold_quantity DESC
+             LIMIT $2`,
+            [storeId, top]
+        );
+        res.status(200).json(result.rows);
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+};
+
+const getLowStockProducts = async (req, res) => {
+    const { storeId } = req.params;
+    const threshold = parseInt(req.query.threshold) || 5;
+    try {
+        const result = await pool.query(
+            `SELECT ss.product_id, p.name AS product_name, ss.quantity
+             FROM store_stock ss
+             JOIN products p ON ss.product_id = p.id
+             WHERE ss.store_id = $1 AND ss.quantity <= $2`,
+            [storeId, threshold]
+        );
+        res.status(200).json(result.rows);
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+};
+
+const getTotalSales = async (req, res) => {
+    const { storeId } = req.params;
+    const { date_from, date_to } = req.query;
+    try {
+        const result = await pool.query(
+            `SELECT p.id, p.name, COUNT(*) AS sales_count,
+                    SUM(ABS(sm.change) * p.price) AS total_revenue
+             FROM stock_movements sm
+             JOIN products p ON sm.product_id = p.id
+             WHERE sm.store_id = $1 AND sm.type = 'sold'
+             AND DATE(sm.timestamp) BETWEEN $2 AND $3
+             GROUP BY p.id, p.name`,
+            [storeId, date_from, date_to]
+        );
+        res.status(200).json(result.rows);
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+};
+
+
+module.exports = {
+    createProduct,
+    getAllProducts,
+    updateProduct,
+    getAllStores,
+    getStoreStock,
+    stockIn,
+    sellProduct,
+    removeStock,
+    getInventoryByDate,
+    getTopSellingProducts,
+    getLowStockProducts,
+    getTotalSales
+};
+
+
 
 
 // ============== stage 1 ======================
