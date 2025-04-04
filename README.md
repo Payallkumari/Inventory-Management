@@ -1,10 +1,8 @@
-# 🏪 Inventory Management System
+##  Inventory Management System
 
 A scalable inventory tracking system designed to evolve from a simple single-store CLI/API to a robust multi-store RESTful service with authentication, rate limiting, and reporting capabilities.
 
----
-
-## 📌 Stage-wise Overview
+##  Stage-wise Overview
 
  **Stage 1** — _MVP for Single Store_
 
@@ -34,8 +32,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 | **Modularity**         | Middleware, services, and routes modularized for scalability            |
 | **Reporting**          | Queries for inventory by date, top-selling, low-stock, and total sales  |
 
----
-
 ##  Assumptions
 
 - Each product is globally unique, available across all stores.
@@ -54,8 +50,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
   - `body`: `{ email, password }`
   - Returns JWT on success.
 
----
-
 ###  Products
 
 | Method | Endpoint                  | Description              |
@@ -64,7 +58,6 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 | GET    | `/api/products`           | List all products        |
 | PUT    | `/api/products/:id`       | Update product           |
 
----
 
 ###  Stores & Stock
 
@@ -76,9 +69,8 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 | POST   | `/api/stores/:storeId/products/:productId/sell`                  | Sell product                 |
 | POST   | `/api/stores/:storeId/products/:productId/remove`                | Remove stock manually        |
 
----
 
-### 📊 Reporting
+###  Reporting
 
 | Method | Endpoint                                              | Description                          |
 |--------|-------------------------------------------------------|--------------------------------------|
@@ -103,8 +95,7 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 
 ---
 
-
-## 🧪 Testing
+##  Testing
 
 Used Postman  to test endpoints.
 Login to Get JWT Token
