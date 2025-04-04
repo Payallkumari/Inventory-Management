@@ -13,7 +13,7 @@ const {
     getTopSellingProducts,
     getLowStockProducts,
     getTotalSales,
-} = require("./crud.js");
+} = require("../services/controller.js");
 
 module.exports = function (app) {
     app.use(express.json());

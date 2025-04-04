@@ -1,7 +1,7 @@
 // // ============== stage 2 ======================
 // // updated crud.js for store-aware inventory
 
-const pool = require("./database.js");
+const pool = require("../db/database.js");
 
 // PRODUCT CONTROLLERS 
 
