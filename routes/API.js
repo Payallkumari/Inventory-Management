@@ -1,5 +1,17 @@
-
 const express = require("express");
+const rateLimiter = require("../middleware/rateLimiter");
+const authenticateToken = require("../middleware/auth");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const users = [
+    {
+        id: 1,
+        email: "manager@example.com",
+        password: bcrypt.hashSync("password123", 10), // pre-hashed
+    },
+];
+
 const {
     createProduct,
     getAllProducts,
@@ -13,10 +25,18 @@ const {
     getTopSellingProducts,
     getLowStockProducts,
     getTotalSales,
+    loginUser,
 } = require("../services/controller.js");
 
 module.exports = function (app) {
     app.use(express.json());
+    app.use(rateLimiter);
+
+    // ==== Public Route (Login) ====
+    app.post("/api/login", loginUser);
+
+    // ==== Protected Routes ====
+    app.use("/api", authenticateToken);
 
     // PRODUCT ROUTES
     app.post("/api/products", createProduct);
@@ -36,4 +56,3 @@ module.exports = function (app) {
     app.get("/api/stores/:storeId/low-stock", getLowStockProducts);
     app.get("/api/stores/:storeId/total-sales", getTotalSales);
 };
-

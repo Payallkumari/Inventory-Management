@@ -2,6 +2,35 @@
 // // updated crud.js for store-aware inventory
 
 const pool = require("../db/database.js");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+
+const users = [
+    {
+        id: 1,
+        email: "manager@example.com",
+        password: bcrypt.hashSync("password123", 10), // pre-hashed
+    },
+];
+
+// LOGIN CONTROLLER Authentication
+const loginUser = (req, res) => {
+    const { email, password } = req.body;
+    const user = users.find((u) => u.email === email);
+
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    const match = bcrypt.compareSync(password, user.password);
+    if (!match) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+    );
+
+    res.json({ token });
+};
 
 // PRODUCT CONTROLLERS 
 
@@ -226,7 +255,8 @@ module.exports = {
     getInventoryByDate,
     getTopSellingProducts,
     getLowStockProducts,
-    getTotalSales
+    getTotalSales,
+    loginUser
 };
 
 

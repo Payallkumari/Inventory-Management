@@ -1,11 +1,18 @@
 // ========== stage 2 =========
-
-
 const express = require("express");
+const dotenv = require("dotenv");
+
+dotenv.config();  // Load environment variables
+
 const app = express();
 app.use(express.json());
-require("./routes/API.js")(app);  // Ensure route.js is loaded
-app.listen(3000, () => console.log("Server running on port 3000"));
+
+// Load routes
+require("./routes/API.js")(app);
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 
 
