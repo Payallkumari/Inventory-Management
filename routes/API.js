@@ -26,13 +26,16 @@ const {
     getLowStockProducts,
     getTotalSales,
     loginUser,
+    logStockMovement,
 } = require("../services/controller.js");
 
 module.exports = function (app) {
     app.use(express.json());
+    
+ //========= API rate-limits  Stage 3 ======
     app.use(rateLimiter);
 
-    // ==== Public Route (Login) ====
+// ==== Public Route (Login)  LOGIN CONTROLLER Basic Authentication  Stage 3 ====
     app.post("/api/login", loginUser);
 
     // ==== Protected Routes ====
@@ -46,7 +49,20 @@ module.exports = function (app) {
     // STORE ROUTES
     app.get("/api/stores", getAllStores);
     app.get("/api/stores/:storeId/stock", getStoreStock);
-    app.post("/api/stores/:storeId/products/:productId/stock-in", stockIn);
+
+ // --------- implemented  partial asyncronization of stock in Stage 3 ------------
+    app.post("/api/stores/:storeId/products/:productId/stock-in", async (req, res) => {
+        const { storeId, productId } = req.params;
+        const { quantity } = req.body;
+
+        try {
+            await logStockMovement(storeId, productId, quantity, "stock-in");
+            res.status(200).send({ message: "Stock updated and event published." });
+        } catch (err) {
+            res.status(500).send(err.message);
+        }
+    });
+
     app.post("/api/stores/:storeId/products/:productId/sell", sellProduct);
     app.post("/api/stores/:storeId/products/:productId/remove", removeStock);
 

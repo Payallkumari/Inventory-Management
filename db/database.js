@@ -1,4 +1,4 @@
-// ========== stage 2 =========
+// ========== stage 2 completed =========
 
 const { Pool } = require("pg");
 
@@ -26,7 +26,7 @@ pool.connect((err, client, release) => {
 module.exports = pool;
 
 
-// ========== stage 1 =========
+// ========== stage 1  completed =========  
 
 // const sqlite3 = require("sqlite3").verbose();
 // const dbName = "inventory.db";

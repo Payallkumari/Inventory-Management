@@ -10,7 +10,7 @@ Remove Item        POST     http://localhost:3000/item/{id}/remove     { "quanti
 
 
 
-// Improved and meaningfull REQUEST API ENDPOINTS 
+// Improved and meaningfull REQUEST API ENDPOINTS  Stage 2
 
 PRODUCT ROUTES
 
@@ -32,3 +32,49 @@ Get Store Inventory by Date	     GET	http://localhost:3000/api/stores/1/inventor
 Get Top Selling Products	     GET	http://localhost:3000/api/stores/1/sales?top=5	                                        None
 Get Low Stock Alerts	         GET	http://localhost:3000/api/stores/1/low-stock?threshold=3	                            None
 Get Total Sales (Date Filtered)	 GET	http://localhost:3000/api/stores/1/total-sales?date_from=2024-03-01&date_to=2024-03-31	None
+
+
+Horizontally Scalable command
+pm2 start e:\workspace\inventory-management\index.js -i max
+pm2 list
+pm2 logs
+pm2 save
+pm2 startup
+
+
+Starting
+pm2 start index.js -i max
+node -p "require('os').cpus().length"
+Example Output:  8
+
+
+So, PM2 will run:
+pm2 start index.js -i 8    or simply: pm2 start index.js -i max
+
+Final Steps:
+pm2 delete all
+pm2 start index.js -i max
+pm2 save
+
+Quick Monitoring Commands for PM2:
+pm2 list            # Show running processes
+pm2 monit           # Real-time monitoring (cpu, memory)
+pm2 logs            # Check app logs
+pm2 restart all     # Restart all apps
+pm2 delete all      # Delete all apps
+
+TRoubleshootings
+
+1. how to close all the running servers on all core.
+netstat -ano | findstr :3000
+taskkill /PID 12345 /F    ---- put he id in PID
+
+results would be
+C:\Users\PAYAL>taskkill /PID 16884 /F
+SUCCESS: The process with PID 16884 has been terminated.
+
+2. Restarting Postgres
+Open Services (Win + R, type services.msc, press Enter).
+Look for PostgreSQL (e.g., PostgreSQL 14).
+If it's Stopped, right-click → Start.
+

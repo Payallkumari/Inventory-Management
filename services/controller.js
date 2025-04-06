@@ -1,9 +1,11 @@
-// // ============== stage 2 ======================
-// // updated crud.js for store-aware inventory
+// // ============== stage 2 completed ======================
+// // updated for store-aware inventory
 
 const pool = require("../db/database.js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const redis = require("redis");
+const publisher = redis.createClient();
 
 const users = [
     {
@@ -13,7 +15,7 @@ const users = [
     },
 ];
 
-// LOGIN CONTROLLER Authentication
+// ---------------- LOGIN CONTROLLER Basic Authentication  Stage 3 ---------------
 const loginUser = (req, res) => {
     const { email, password } = req.body;
     const user = users.find((u) => u.email === email);
@@ -158,13 +160,17 @@ const removeStock = async (req, res) => {
     }
 };
 
-
+// --------- implemented  partial asyncronization  Stage 3 ------------
 const logStockMovement = async (storeId, productId, change, type) => {
     await pool.query(
         `INSERT INTO stock_movements (store_id, product_id, change, type, timestamp)
          VALUES ($1, $2, $3, $4, NOW())`,
         [storeId, productId, change, type]
     );
+
+    // Publish an event to Redis
+    const event = { storeId, productId, change, type, timestamp: new Date() };
+    publisher.publish("stockMovement", JSON.stringify(event));
 };
 
 //REPORTS 
@@ -256,13 +262,14 @@ module.exports = {
     getTopSellingProducts,
     getLowStockProducts,
     getTotalSales,
-    loginUser
+    loginUser,
+    logStockMovement
 };
 
 
 
 
-// ============== stage 1 ======================
+// ============== stage 1 completed ======================
 
 
 // const db = require("./database.js");
