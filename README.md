@@ -82,7 +82,7 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 
 | Feature              | v1                                       | v2                                                              |
 |----------------------|-------------------------------------------|------------------------------------------------------------------|
-| **Stores**            | Single store (assumed)                   | Supports 50+ stores                                             |
+| **Stores**            | Single store (assumed)                   | Supports 500+ stores                                             |
 | **Data Storage**      | Flat file / SQLite                       | PostgreSQL for scalability                                       |
 | **Auth**              | None                                     | JWT-based user authentication                                   |
 | **Rate Limiting**     | None                                     | Express middleware for DDoS protection                          |
@@ -96,4 +96,4 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 Used Postman  to test endpoints.
 Login to Get JWT Token
 Add header: Authorization: Bearer <token> for protected routes.  
-write this in readmi formate 
+
