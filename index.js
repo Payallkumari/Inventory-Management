@@ -1,39 +1,23 @@
 // ========== stage 2 =========
 const express = require("express");
 const dotenv = require("dotenv");
-const rateLimit = require("express-rate-limit");
-const slowDown = require("express-slow-down");
+const apiLimiter = require("./middleware/rateLimiter.js");
+const speedLimiter = require("./middleware/requestThrottling.js");
 
-dotenv.config();  
+dotenv.config();
 
 const app = express();
+
 app.use(express.json());
-
-// Load and use rate limiter
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 60, 
-    message: "Too many requests, please try again later.",
-    standardHeaders: true, 
-    legacyHeaders: false, 
-});
-app.use("/api", apiLimiter); 
-
-// Load and use throttling
-const speedLimiter = slowDown({
-    windowMs: 15 * 60 * 1000,
-    delayAfter: 50,           
-    delayMs: 1000            
-});
-
-app.use("/api", speedLimiter); 
-
+app.use("/api", apiLimiter);
+app.use("/api", speedLimiter);
 
 require("./routes/API.js")(app);
 
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
 
 // ========== stage 1 =========
 
