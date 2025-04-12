@@ -1,4 +1,4 @@
--- Active: 1743791473942@@127.0.0.1@5432@Inventory Module
+-- Active: 1744214608473@@127.0.0.1@5432@Inventory Module
 DROP TABLE IF EXISTS stock_movements, store_stock, stores, products CASCADE;
 
 CREATE TABLE products (
@@ -109,21 +109,22 @@ INSERT INTO store_stock (store_id, product_id, quantity)
 SELECT s.id, p.id, FLOOR(RANDOM() * 100 + 1)
 FROM stores s, products p;
 
-TRUNCATE TABLE stock_movements;
 SELECT * FROM stock_movements ;
+TRUNCATE TABLE stock_movements;
+
 INSERT INTO stock_movements (store_id, product_id, change, type, timestamp)
 SELECT
     s.id,
     p.id,
-    FLOOR(RANDOM() * 50) + 1 * (CASE WHEN FLOOR(RANDOM() * 3) = 0 THEN 1 ELSE -1 END) AS change,  -- Random value for change, positive or negative
+    FLOOR(RANDOM() * 50) + 1 * (CASE WHEN FLOOR(RANDOM() * 3) = 0 THEN 1 ELSE -1 END) AS change,  
     CASE 
         WHEN FLOOR(RANDOM() * 3) = 0 THEN 'stock-in'  
         WHEN FLOOR(RANDOM() * 3) = 1 THEN 'sold'     
-        ELSE 'remove'                               
+        ELSE 'remove'                                
     END AS type,
     NOW() - INTERVAL '1 day' * FLOOR(RANDOM() * 730)  
-FROM stores s, products p
-LIMIT 200;
+FROM stores s, products p;
+
 
 UPDATE products
 SET created_at = NOW() - INTERVAL '1 day' * FLOOR(RANDOM() * 730);
@@ -151,7 +152,7 @@ WHERE ss.product_id = (SELECT id FROM products WHERE name = 'Rice (1 kg)');
 SELECT sm.timestamp, p.name AS product, sm.change, sm.type
 FROM stock_movements sm
 JOIN products p ON sm.product_id = p.id
-WHERE sm.timestamp >= (CURRENT_DATE - INTERVAL '7 days')
+WHERE sm.timestamp >= (CURRENT_DATE - INTERVAL '60 days')
 ORDER BY sm.timestamp DESC; 
 
 
@@ -159,7 +160,15 @@ SELECT p.name AS product
 FROM store_stock ss
 JOIN products p ON ss.product_id = p.id
 WHERE ss.store_id = (SELECT id FROM stores WHERE name = 'Romeo Mart 2')
-AND ss.quantity = 0;
+AND ss.quantity = 5;
+
+
+SELECT 
+    p.name AS product, 
+    ss.quantity
+FROM store_stock ss
+JOIN products p ON ss.product_id = p.id
+WHERE ss.store_id = (SELECT id FROM stores WHERE name = 'Romeo Mart 2');
 
 
 SELECT s.name AS store, p.name AS product, ss.quantity
@@ -173,7 +182,7 @@ ORDER BY ss.quantity ASC;
 SELECT p.name AS product, SUM(ABS(sm.change)) AS total_sold  
 FROM stock_movements sm
 JOIN products p ON sm.product_id = p.id
-WHERE sm.type = 'sold' 
+WHERE sm.type = 'remove' 
 AND p.name = 'Eggs (Dozen)'
 GROUP BY p.name;
 
@@ -218,6 +227,44 @@ JOIN
 WHERE 
     ss.store_id = 1;
 
+SELECT 
+  
+    s.name AS store_name,
+    p.id AS product_id,
+    p.name AS product_name,
+    ss.quantity
+FROM 
+    store_stock ss
+JOIN 
+    stores s ON ss.store_id = s.id
+JOIN 
+    products p ON ss.product_id = p.id
+WHERE 
+    ss.store_id = 15
+ORDER BY 
+    ss.store_id, p.name;
 
 
+SELECT 
+  ABS(SUM(sm.change)) AS total_quantity_sold,
+  ABS(SUM(sm.change * p.price)) AS total_revenue
+FROM stock_movements sm
+JOIN products p ON sm.product_id = p.id
+WHERE sm.store_id = 1
+  AND sm.type = 'sold'
+  AND sm.timestamp >= '2023-07-25'
+  AND sm.timestamp <= '2024-11-17';
+
+
+SELECT 
+    p.id AS product_id,
+    p.name AS product_name,
+    sm.timestamp
+FROM 
+    stock_movements sm
+JOIN 
+    products p ON sm.product_id = p.id
+WHERE 
+    sm.type = 'sold'
+    AND sm.store_id = 1;
 

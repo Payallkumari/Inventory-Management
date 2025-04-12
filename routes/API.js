@@ -1,5 +1,5 @@
 const express = require("express");
-const rateLimiter = require("../middleware/rateLimiter");
+// const rateLimiter = require("../middleware/rateLimiter");
 const authenticateToken = require("../middleware/auth");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -33,7 +33,7 @@ module.exports = function (app) {
     app.use(express.json());
     
  //========= API rate-limits  Stage 3 ======
-    app.use(rateLimiter);
+    // app.use(rateLimiter);
 
 // ==== Public Route (Login)  LOGIN CONTROLLER Basic Authentication  Stage 3 ====
     app.post("/api/login", loginUser);

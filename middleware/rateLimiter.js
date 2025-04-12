@@ -4,6 +4,8 @@ const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     message: "Too many requests, please try again later.",
+    standardHeaders: true, // Send RateLimit headers
+    legacyHeaders: false, // Disable the deprecated X-RateLimit headers
 });
 
 module.exports = apiLimiter;
