@@ -1,18 +1,12 @@
-// --------- implemented  partial asyncronization  Stage 3 ------------
 const redis = require("redis");
-const subscriber = redis.createClient();
+const subscriber = redis.createClient({ url: process.env.REDIS_URL });
 
-// Subscribe to the "stockMovement" channel
-subscriber.subscribe("stockMovement");
-
-// Handle incoming messages
-subscriber.on("message", (channel, message) => {
-    if (channel === "stockMovement") {
+subscriber.connect().then(async () => {
+    console.log("Redis subscriber connected");
+    await subscriber.subscribe("stockMovement", (message) => {
         const event = JSON.parse(message);
-        console.log("Processing stock movement event:", event);
-
-        // Add logic to process the event (e.g., update analytics, notify users)
-    }
+        console.log("Asynchronous stock movement event received:", event);
+    });
+}).catch(err => {
+    console.error("Redis Subscriber error:", err);
 });
-
-console.log("Subscriber is listening for stock movement events...");

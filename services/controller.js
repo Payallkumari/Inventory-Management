@@ -1,11 +1,25 @@
-// // ============== stage 2 completed ======================
-// // updated for store-aware inventory
+// ============== stage 2 completed ======================
 
-const pool = require("../db/database.js");
+const { queryWrite, queryRead } = require("../db/database.js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const redis = require("redis");
-const publisher = redis.createClient();
+
+// Publisher for asynchronous events
+const publisher = redis.createClient({ url: process.env.REDIS_URL });
+publisher.connect().then(() => {
+    console.log("Redis publisher connected");
+}).catch(err => {
+    console.error("Redis Publisher error:", err);
+});
+
+// A separate Redis client for caching
+const cacheClient = redis.createClient({ url: process.env.REDIS_URL });
+cacheClient.connect().then(() => {
+    console.log("Redis cache connected");
+}).catch(err => {
+    console.error("Redis Cache error:", err);
+});
 
 const users = [
     {
@@ -15,7 +29,7 @@ const users = [
     },
 ];
 
-// ---------------- LOGIN CONTROLLER Basic Authentication  Stage 3 ---------------
+// --------- Basic Authentication ----------
 const loginUser = (req, res) => {
     const { email, password } = req.body;
     const user = users.find((u) => u.email === email);
@@ -34,15 +48,16 @@ const loginUser = (req, res) => {
     res.json({ token });
 };
 
-// PRODUCT CONTROLLERS 
-
+// product controller
 const createProduct = async (req, res) => {
     const { name, price } = req.body;
     try {
-        const result = await pool.query(
+        const result = await queryWrite(
             `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`,
             [name, price]
         );
+        // Invalidate the cache since a new product was added
+        await cacheClient.del("products");
         res.status(201).send({ message: "Product created", id: result.rows[0].id });
     } catch (err) {
         res.status(500).send(err.message);
@@ -51,7 +66,17 @@ const createProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
     try {
-        const result = await pool.query(`SELECT * FROM products ORDER BY id`);
+        // Attempt to get cached products data
+        const cachedData = await cacheClient.get("products");
+        if (cachedData) {
+            console.log("Cache hit");
+            return res.status(200).json(JSON.parse(cachedData));
+        }
+        console.log("Cache miss");
+        // Query database if cache is not available
+        const result = await queryRead(`SELECT * FROM products ORDER BY id`);
+        // Cache the result for 1 hour
+        await cacheClient.setEx("products", 3600, JSON.stringify(result.rows));
         res.status(200).json(result.rows);
     } catch (err) {
         res.status(500).send(err.message);
@@ -62,24 +87,26 @@ const updateProduct = async (req, res) => {
     const { productId } = req.params;
     const { name, price } = req.body;
     try {
-        const result = await pool.query(
+        const result = await queryWrite(
             `UPDATE products SET name = $1, price = $2 WHERE id = $3 RETURNING *`,
             [name, price, productId]
         );
         if (result.rowCount === 0) {
             return res.status(404).send("Product not found");
         }
+        // Invalidate the cache since data has been updated
+        await cacheClient.del("products");
         res.status(200).send("Product updated");
     } catch (err) {
         res.status(500).send(err.message);
     }
 };
 
-//STORE CONTROLLERS 
+// store 
 
 const getAllStores = async (req, res) => {
     try {
-        const result = await pool.query(`SELECT * FROM stores ORDER BY id`);
+        const result = await queryRead(`SELECT * FROM stores ORDER BY id`);
         res.status(200).json(result.rows);
     } catch (err) {
         res.status(500).send(err.message);
@@ -89,7 +116,7 @@ const getAllStores = async (req, res) => {
 const getStoreStock = async (req, res) => {
     const { storeId } = req.params;
     try {
-        const result = await pool.query(
+        const result = await queryRead(
             `SELECT p.id AS product_id, p.name, p.price, ss.quantity
              FROM store_stock ss
              JOIN products p ON ss.product_id = p.id
@@ -106,7 +133,7 @@ const stockIn = async (req, res) => {
     const { storeId, productId } = req.params;
     const { quantity } = req.body;
     try {
-        await pool.query(
+        await queryWrite(
             `INSERT INTO store_stock (store_id, product_id, quantity)
              VALUES ($1, $2, $3)
              ON CONFLICT (store_id, product_id)
@@ -114,6 +141,8 @@ const stockIn = async (req, res) => {
             [storeId, productId, quantity]
         );
         await logStockMovement(storeId, productId, quantity, "stock-in");
+        // Invalidate cache if store inventory changes (if needed)
+        await cacheClient.del("products");
         res.status(200).send("Stocked in successfully.");
     } catch (err) {
         res.status(500).send(err.message);
@@ -124,7 +153,7 @@ const sellProduct = async (req, res) => {
     const { storeId, productId } = req.params;
     const { quantity } = req.body;
     try {
-        const result = await pool.query(
+        const result = await queryWrite(
             `UPDATE store_stock SET quantity = quantity - $1
              WHERE store_id = $2 AND product_id = $3 AND quantity >= $1
              RETURNING *`,
@@ -144,7 +173,7 @@ const removeStock = async (req, res) => {
     const { storeId, productId } = req.params;
     const { quantity } = req.body;
     try {
-        const result = await pool.query(
+        const result = await queryWrite(
             `UPDATE store_stock SET quantity = quantity - $1
              WHERE store_id = $2 AND product_id = $3 AND quantity >= $1
              RETURNING *`,
@@ -160,9 +189,9 @@ const removeStock = async (req, res) => {
     }
 };
 
-// --------- implemented  partial asyncronization  Stage 3 ------------
+// --------- implemented partial asynchronous updates Stage 3 ------------
 const logStockMovement = async (storeId, productId, change, type) => {
-    await pool.query(
+    await queryWrite(
         `INSERT INTO stock_movements (store_id, product_id, change, type, timestamp)
          VALUES ($1, $2, $3, $4, NOW())`,
         [storeId, productId, change, type]
@@ -173,13 +202,13 @@ const logStockMovement = async (storeId, productId, change, type) => {
     publisher.publish("stockMovement", JSON.stringify(event));
 };
 
-//REPORTS 
+// filter and reports 
 
 const getInventoryByDate = async (req, res) => {
     const { storeId } = req.params;
     const { date_from, date_to } = req.query;
     try {
-        const result = await pool.query(
+        const result = await queryRead(
             `SELECT * FROM stock_movements
              WHERE store_id = $1 AND timestamp BETWEEN $2 AND $3
              ORDER BY timestamp DESC`,
@@ -195,7 +224,7 @@ const getTopSellingProducts = async (req, res) => {
     const { storeId } = req.params;
     const top = parseInt(req.query.top) || 5;
     try {
-        const result = await pool.query(
+        const result = await queryRead(
             `SELECT p.id, p.name, SUM(ABS(sm.change)) AS sold_quantity
              FROM stock_movements sm
              JOIN products p ON sm.product_id = p.id
@@ -215,7 +244,7 @@ const getLowStockProducts = async (req, res) => {
     const { storeId } = req.params;
     const threshold = parseInt(req.query.threshold) || 5;
     try {
-        const result = await pool.query(
+        const result = await queryRead(
             `SELECT ss.product_id, p.name AS product_name, ss.quantity
              FROM store_stock ss
              JOIN products p ON ss.product_id = p.id
@@ -232,7 +261,7 @@ const getTotalSales = async (req, res) => {
     const { storeId } = req.params;
     const { date_from, date_to } = req.query;
     try {
-        const result = await pool.query(
+        const result = await queryRead(
             `SELECT p.id, p.name, COUNT(*) AS sales_count,
                     SUM(ABS(sm.change) * p.price) AS total_revenue
              FROM stock_movements sm
@@ -247,7 +276,6 @@ const getTotalSales = async (req, res) => {
         res.status(500).send(err.message);
     }
 };
-
 
 module.exports = {
     createProduct,
@@ -265,7 +293,6 @@ module.exports = {
     loginUser,
     logStockMovement
 };
-
 
 
 

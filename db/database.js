@@ -1,29 +1,73 @@
-// ========== stage 2 completed =========
+// ========== stage 3 Read/Write Separation =========
 
 const { Pool } = require("pg");
+require("dotenv").config();
 
-// PostgreSQL connection   
-// migrated to a relational database (PostgreSQL) for better performance and scalability
-// and to support more complex queries and transactions.
-const pool = new Pool({
-    user: "postgres",            
-    host: "localhost",            
-    database: "Inventory Module", 
-    password: "12345",           
-    port: 5432,                 
+
+const writePool = new Pool({
+    connectionString: process.env.PRIMARY_DB_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
-// Test the database connection
-pool.connect((err, client, release) => {
+const readPool = new Pool({
+    connectionString: process.env.REPLICA_DB_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
+writePool.connect((err, client, release) => {
     if (err) {
-        console.error("Error connecting to PostgreSQL:", err.message);
+        console.error("Error connecting to primary DB:", err.message);
     } else {
-        console.log("Connected to PostgreSQL database.");
+        console.log("Connected to PRIMARY database.");
         release();
     }
 });
 
-module.exports = pool;
+readPool.connect((err, client, release) => {
+    if (err) {
+        console.error("Error connecting to read replica:", err.message);
+    } else {
+        console.log("Connected to READ REPLICA.");
+        release();
+    }
+});
+
+module.exports = {
+    queryWrite: (text, params) => writePool.query(text, params),
+    queryRead: (text, params) => readPool.query(text, params),
+};
+
+
+
+// ========== stage 2 completed  =========
+// PostgreSQL connection   
+// migrated to a relational database (PostgreSQL) for better performance and scalability
+// and to support more complex queries and transactions.
+
+
+// const { Pool } = require("pg");
+
+// const pool = new Pool({
+//     user: "postgres",            
+//     host: "localhost",            
+//     database: "Inventory Module", 
+//     password: "12345",           
+//     port: 5432,                 
+// });
+
+// // Test the database connection
+// pool.connect((err, client, release) => {
+//     if (err) {
+//         console.error("Error connecting to PostgreSQL:", err.message);
+//     } else {
+//         console.log("Connected to PostgreSQL database.");
+//         release();
+//     }
+// });
+
+// module.exports = pool;
+
+
 
 
 // ========== stage 1  completed =========  
