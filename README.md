@@ -2,19 +2,19 @@
 
 A scalable inventory tracking system designed to evolve from a simple single-store CLI/API to a robust multi-store RESTful service with authentication, rate limiting, and reporting capabilities.
 
+
 ## Design Decisions
 
 | Feature                | Decision                                                                 |
 |------------------------|--------------------------------------------------------------------------|
 | **Tech Stack**         | Node.js, Express.js, PostgreSQL                                          |
-| **ORM / DB Layer**     | Used `pg` with raw queries for better control                            |
-| **Authentication**     | JWT (1-hour expiry), implemented middleware                              |
+| **Authentication**     | JWT (1-hour expiry), implemented middleware, and RBAC                    |
 | **Rate Limiting**      | `express-rate-limit` middleware (100 requests/15min per IP)              |
-| **Request Throttling** | `express-slow-down` middleware: 2s delay after 50 requests                |
+| **Request Throttling** | `express-slow-down` middleware: 2s delay after 50 requests               |
 | **API Structure**      | RESTful design: `/api/products`, `/api/stores/:id/stock`, etc.           |
 | **Modularity**         | Middleware, services, and routes modularized for scalability             |
 | **Reporting**          | Queries for inventory by date, top-selling, low-stock, and total sales   |
-| **Read/Write Separation** | Neon’s branching: `queryWrite` to primary, `queryRead` to replica        |
+| **Read/Write Separation** | Neon’s branching: `queryWrite` to primary, `queryRead` to replica     |
 | **Caching**            | Redis for repeated queries (2x–5x faster; ~70% reduction in DB load)     |
 | **Async Handling**     | Redis Pub/Sub for background inventory processing (event-driven)         |
 | **Horizontal Scaling** | PM2 in cluster mode to utilize all CPU cores on single machine           |
