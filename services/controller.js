@@ -1,4 +1,4 @@
-// ============== stage 2 completed ======================
+// ============== stage 2 & 3 completed ======================
 
 const { queryWrite, queryRead } = require("../db/database.js");
 const jwt = require("jsonwebtoken");
@@ -21,11 +21,19 @@ cacheClient.connect().then(() => {
     console.error("Redis Cache error:", err);
 });
 
+// Users with roles: manager and customer
 const users = [
     {
         id: 1,
         email: "manager@example.com",
         password: bcrypt.hashSync("password123", 10), // pre-hashed
+        role: "manager"
+    },
+    {
+        id: 2,
+        email: "customer@example.com",
+        password: bcrypt.hashSync("customerpass", 10), // pre-hashed
+        role: "customer"
     },
 ];
 
@@ -33,22 +41,18 @@ const users = [
 const loginUser = (req, res) => {
     const { email, password } = req.body;
     const user = users.find((u) => u.email === email);
-
     if (!user) return res.status(400).json({ error: "User not found" });
-
     const match = bcrypt.compareSync(password, user.password);
-    if (!match) return res.status(401).json({ error: "Invalid credentials" });
-
+    if (!match) return res.status(401).json({ error: "Invalid credentials" })
     const token = jwt.sign(
-        { userId: user.id, email: user.email },
+        { userId: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
     );
-
     res.json({ token });
 };
 
-// product controller
+//Product Controller -- Implemented caching 
 const createProduct = async (req, res) => {
     const { name, price } = req.body;
     try {
@@ -56,7 +60,7 @@ const createProduct = async (req, res) => {
             `INSERT INTO products (name, price) VALUES ($1, $2) RETURNING id`,
             [name, price]
         );
-        // Invalidate the cache since a new product was added
+        // Invalidate product cache
         await cacheClient.del("products");
         res.status(201).send({ message: "Product created", id: result.rows[0].id });
     } catch (err) {
@@ -66,16 +70,13 @@ const createProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
     try {
-        // Attempt to get cached products data
         const cachedData = await cacheClient.get("products");
         if (cachedData) {
-            console.log("Cache hit");
+            console.log("Cache hit for products");
             return res.status(200).json(JSON.parse(cachedData));
         }
-        console.log("Cache miss");
-        // Query database if cache is not available
+        console.log("Cache miss for products");
         const result = await queryRead(`SELECT * FROM products ORDER BY id`);
-        // Cache the result for 1 hour
         await cacheClient.setEx("products", 3600, JSON.stringify(result.rows));
         res.status(200).json(result.rows);
     } catch (err) {
@@ -94,7 +95,7 @@ const updateProduct = async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).send("Product not found");
         }
-        // Invalidate the cache since data has been updated
+        // Invalidate product cache when updated
         await cacheClient.del("products");
         res.status(200).send("Product updated");
     } catch (err) {
@@ -102,7 +103,7 @@ const updateProduct = async (req, res) => {
     }
 };
 
-// store 
+// Store Controllers 
 
 const getAllStores = async (req, res) => {
     try {
@@ -129,6 +130,7 @@ const getStoreStock = async (req, res) => {
     }
 };
 
+// -------------------- Stock Operations & Asynchronous Updates --------------------
 const stockIn = async (req, res) => {
     const { storeId, productId } = req.params;
     const { quantity } = req.body;
@@ -141,7 +143,6 @@ const stockIn = async (req, res) => {
             [storeId, productId, quantity]
         );
         await logStockMovement(storeId, productId, quantity, "stock-in");
-        // Invalidate cache if store inventory changes (if needed)
         await cacheClient.del("products");
         res.status(200).send("Stocked in successfully.");
     } catch (err) {
@@ -189,21 +190,18 @@ const removeStock = async (req, res) => {
     }
 };
 
-// --------- implemented partial asynchronous updates Stage 3 ------------
+// --------- Asynchronous Logging ---------
 const logStockMovement = async (storeId, productId, change, type) => {
     await queryWrite(
         `INSERT INTO stock_movements (store_id, product_id, change, type, timestamp)
          VALUES ($1, $2, $3, $4, NOW())`,
         [storeId, productId, change, type]
     );
-
-    // Publish an event to Redis
     const event = { storeId, productId, change, type, timestamp: new Date() };
     publisher.publish("stockMovement", JSON.stringify(event));
 };
 
-// filter and reports 
-
+// Filtering & Reporting 
 const getInventoryByDate = async (req, res) => {
     const { storeId } = req.params;
     const { date_from, date_to } = req.query;
@@ -294,10 +292,7 @@ module.exports = {
     logStockMovement
 };
 
-
-
 // ============== stage 1 completed ======================
-
 
 // const db = require("./database.js");
 

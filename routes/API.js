@@ -1,5 +1,6 @@
 const express = require("express");
 const authenticateToken = require("../middleware/auth");
+const authorize = require("../middleware/authorize");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -30,24 +31,14 @@ const {
 
 module.exports = function (app) {
     app.use(express.json());
-
-// ==== Public Route (Login)  LOGIN CONTROLLER Basic Authentication  Stage 3 ====
     app.post("/api/login", loginUser);
-
-    // ==== Protected Routes ====
+    
     app.use("/api", authenticateToken);
 
-    // product routes
-    app.post("/api/products", createProduct);
-    app.get("/api/products", getAllProducts);
-    app.put("/api/products/:productId", updateProduct);
-
-    // store routes
-    app.get("/api/stores", getAllStores);
-    app.get("/api/stores/:storeId/stock", getStoreStock);
-
- // --------- implemented  partial asyncronization of stock in Stage 3 ------------
-    app.post("/api/stores/:storeId/products/:productId/stock-in", async (req, res) => {
+    // Manager-only routes
+    app.post("/api/products", authorize(["manager"]), createProduct);
+    app.put("/api/products/:productId", authorize(["manager"]), updateProduct);
+    app.post("/api/stores/:storeId/products/:productId/stock-in", authorize(["manager"]), async (req, res) => {
         const { storeId, productId } = req.params;
         const { quantity } = req.body;
 
@@ -58,9 +49,13 @@ module.exports = function (app) {
             res.status(500).send(err.message);
         }
     });
+    app.post("/api/stores/:storeId/products/:productId/sell", authorize(["manager"]), sellProduct);
+    app.post("/api/stores/:storeId/products/:productId/remove", authorize(["manager"]), removeStock);
 
-    app.post("/api/stores/:storeId/products/:productId/sell", sellProduct);
-    app.post("/api/stores/:storeId/products/:productId/remove", removeStock);
+    // Routes accessible to both managers and customers:
+    app.get("/api/products", getAllProducts);
+    app.get("/api/stores", getAllStores);
+    app.get("/api/stores/:storeId/stock", getStoreStock);
 
     // reporting and filtering routes
     app.get("/api/stores/:storeId/inventory", getInventoryByDate);
