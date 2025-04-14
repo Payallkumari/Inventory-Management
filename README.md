@@ -1,6 +1,6 @@
 ##  Inventory Management System
 
-A scalable inventory tracking system designed to evolve from a simple single-store CLI/API to a robust multi-store RESTful service with authentication, rate limiting, and reporting capabilities.
+A performance-focused inventory system that evolves from a simple single-store setup to a multi-store, secure, and scalable RESTful API — complete with authentication, rate limiting, caching, and insightful reporting.
 
 
 ## Design Decisions
