@@ -27,11 +27,13 @@ A scalable inventory tracking system designed to evolve from a simple single-sto
 - No user registration yet—credentials are hardcoded for now.
 - Each request must include a valid token for all endpoints (except `/login`).
 - The system anticipates read-heavy traffic, optimized accordingly.
+- Redis is available and reliable for caching and pub/sub communication.
+- Neon is used as the PostgreSQL host with support for read/write branching.
 - PostgreSQL is used for relational queries and scalability.
 
 
 ##  API Design
-
+- All endpoints are prefixed with `http://localhost:3000`
 ### Authentication
 
 - **POST** `/api/login`
